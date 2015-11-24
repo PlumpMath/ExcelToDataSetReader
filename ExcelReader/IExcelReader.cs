@@ -1,27 +1,26 @@
-﻿using System;
-using System.Data;
-using System.Collections.Generic;
-
-namespace ExcelReader
+﻿namespace ExcelReader
 {
+   using System.Data;
+   using System.Collections.Generic;
+
    /// <summary>
    /// Generic interface handling the transformation from Excel files to dataset.
    /// </summary>
-   interface IExcelReader : IDatasetReader
+   interface IExcelReader : IDataSetReader
    {
       /// <summary>
       /// Retrieve excel workbook and converts it to datatable
       /// </summary>
-      /// <param name="WorksheetName">Worksheet name</param>
-      /// <param name="ExcelBinary">Excel binary file</param>
+      /// <param name="worksheetName">Worksheet name</param>
+      /// <param name="file">Excel binary file</param>
       /// <returns>Datatable containing the data of the worksheet</returns>
-      DataTable GetExcelData(string WorksheetName, byte[] ExcelBinary);
+      DataTable GetExcelData(string worksheetName, byte[] file);
       /// <summary>
       /// Retrieve excel workbooks as a dataset.
       /// </summary>
-      /// <param name="WorksheetNames">Collection of worksheet names</param>
-      /// <param name="ExcelBinary">Excel binary file</param>
+      /// <param name="worksheetNames">Collection of worksheet names</param>
+      /// <param name="file">Excel binary file</param>
       /// <returns>Dataset containing the datatables of the passed worksheets</returns>
-      DataSet GetExcelData(ICollection<string> WorksheetNames, byte[] ExcelBinary);
+      DataSet GetExcelData(ICollection<string> worksheetNames, byte[] file);
    }
 }

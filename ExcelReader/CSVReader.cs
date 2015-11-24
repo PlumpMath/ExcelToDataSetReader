@@ -1,50 +1,46 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data;
-
-namespace ExcelReader
+﻿namespace ExcelReader
 {
+   using System;
+   using System.Collections.Generic;
+   using System.Linq;
+   using System.Text;
+   using System.Data;
+
    /// <summary>
    /// Contains logic for reading CSV files and translating them into a dataset representing the file opened in Excel.
    /// </summary>
-   public class CSVReader : IDatasetReader
+   public class CsvReader : IDataSetReader
    {
 
       /// <summary>
       /// Default RFC-4180 separator
       /// </summary>
-      public const char DefRFC4180Sep = ',';
+      public const char DefRfc4180Sep = ',';
 
       /// <summary>
       /// Reads a CSV file and translates that to a dataset.
       /// Column names reflect the Excel columns.
       /// </summary>
-      /// <param name="FileData">CSV file to read</param>
+      /// <param name="file">CSV file to read</param>
       /// <returns>Dataset</returns>
       /// <remarks>CSV file can be read if specified as in RFC-4180, with the additional formatting of European CSV (semi-column separator instead of comma)</remarks>
-      public DataSet GetDataSet(byte[] FileData)
+      public DataSet GetDataSet(byte[] file)
       {
-         char[] PossibleSeparator = new char[] {
-         DefRFC4180Sep,
-         ';',
-         '\t'
-      };
+         char[] candidateSeparators = new char[] { DefRfc4180Sep, ';', '\t' };
          //US format, European format and tab
-         DataSet ExcelDataset = new DataSet();
+         DataSet ds = new DataSet();
 
-         DataTable CSVTable = new DataTable(ExcelReader.DefaultExcelSheetName);
-         Encoding Encoding = GetSafeEncodingFromBOM(FileData);
-         string CSVFile = Encoding.GetString(FileData);
+         DataTable CsvTable = new DataTable(ExcelToDataSetReader.DefaultExcelSheetName);
+         Encoding enc = GetSafeEncodingFromBom(file);
+         string CSVFile = enc.GetString(file);
 
          //get rows (vbCrLF is the standard used by CSV RFC)
-         string[] CSVRows = CSVFile.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+         string[] CsvRows = CSVFile.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
          //check separator and replace
-         char CSVSep = DetectCSVSeparator(CSVRows, PossibleSeparator, DefRFC4180Sep);
+         char CsvSep = DetectCsvSeparator(CsvRows, candidateSeparators, DefRfc4180Sep);
 
-         foreach (string rowsWithEnd in (from o in CSVRows select o + CSVSep))
+         foreach (string rowsWithEnd in (from o in CsvRows select o + CsvSep))
          {
             List<string> values = new List<string>();
             List<char> currValue = new List<char>();
@@ -55,7 +51,7 @@ namespace ExcelReader
             {
                char current = chars[i];
 
-               if (current == CSVSep)
+               if (current == CsvSep)
                {
                   if (!skip)
                   {
@@ -70,7 +66,7 @@ namespace ExcelReader
                else if (current == '"')
                {
                   skip = !skip;
-                  if (!skip && i + 1 < chars.Length - 1 && chars[i + 1] == CSVSep)
+                  if (!skip && i + 1 < chars.Length - 1 && chars[i + 1] == CsvSep)
                   {
                      continue;
                   }
@@ -85,20 +81,20 @@ namespace ExcelReader
                }
             }
             //creating the columns
-            if (CSVTable.Columns.Count < values.Count)
+            if (CsvTable.Columns.Count < values.Count)
             {
-               int upperBound = values.Count - CSVTable.Columns.Count - 1;
-               for (int colIdx = CSVTable.Columns.Count; colIdx <= upperBound; colIdx++)
+               int upperBound = values.Count - CsvTable.Columns.Count - 1;
+               for (int colIdx = CsvTable.Columns.Count; colIdx <= upperBound; colIdx++)
                {
-                  CSVTable.Columns.Add(ExcelReader.GetColumnNameFromIndex(colIdx), typeof(System.Object));
+                  CsvTable.Columns.Add(ExcelToDataSetReader.GetColumnNameFromIndex(colIdx), typeof(System.Object));
                }
             }
             //add row
-            CSVTable.Rows.Add(values.ToArray());
+            CsvTable.Rows.Add(values.ToArray());
          }
-         ExcelDataset.Tables.Add(CSVTable);
+         ds.Tables.Add(CsvTable);
 
-         return ExcelDataset;
+         return ds;
       }
 
       /// <summary>
@@ -106,21 +102,21 @@ namespace ExcelReader
       /// </summary>
       /// <param name="file">File byte array</param>
       /// <returns>Default Encoding <v>ANSI</v> if no BOM found, <v>Encoding</v> otherwise</returns>
-      private Encoding GetSafeEncodingFromBOM(byte[] file)
+      private static Encoding GetSafeEncodingFromBom(byte[] file)
       {
          foreach (EncodingInfo EncodingInfo in Encoding.GetEncodings())
          {
-            Encoding LookupEncoding = EncodingInfo.GetEncoding();
-            byte[] BOM = LookupEncoding.GetPreamble();
+            Encoding lookupEnc = EncodingInfo.GetEncoding();
+            byte[] bom = lookupEnc.GetPreamble();
             bool eureka = true;
-            if ((BOM.Length > 0) && (BOM.Length <= file.Length))
+            if ((bom.Length > 0) && (bom.Length <= file.Length))
             {
-               for (int bomIdx = 0; bomIdx <= BOM.Length - 1; bomIdx++)
+               for (int bomIdx = 0; bomIdx <= bom.Length - 1; bomIdx++)
                {
-                  if (BOM[bomIdx] != file[bomIdx])
+                  if (bom[bomIdx] != file[bomIdx])
                   {
                      eureka = false;
-                     break; 
+                     break;
                   }
                }
             }
@@ -130,7 +126,7 @@ namespace ExcelReader
             }
             if (eureka)
             {
-               return LookupEncoding;
+               return lookupEnc;
             }
          }
 
@@ -141,51 +137,52 @@ namespace ExcelReader
       /// <summary>
       /// Detects the CSV separator from a set of possible separators.
       /// </summary>
-      /// <param name="CSVRows">CSV rows as set of strings</param>
+      /// <param name="CsvRows">CSV rows as set of strings</param>
+      /// <param name="candidateSeparators">Hint of candidate separators</param>
       /// <param name="defSep">Default value to return if no other separators are detected</param>
       /// <returns>Separator, if detected, <paramref name="defSep">Default separator</paramref> if nothing else has been found</returns>
-      private char DetectCSVSeparator(string[] CSVRows, IList<char> Separators, char defSep)
+      private static char DetectCsvSeparator(string[] CsvRows, IList<char> candidateSeparators, char defSep)
       {
          //copy the list of candidate separators
          //ControlChars.Tab
-         if (Separators.Count == 0 || CSVRows.Length == 0)
+         if (candidateSeparators.Count == 0 || CsvRows.Length == 0)
          {
             return defSep;
          }
 
-         List<char> Sep = (from chSep in Separators select chSep).Distinct().ToList();
+         List<char> seps = (from chSep in candidateSeparators select chSep).Distinct().ToList();
          //read the first row and exclude separators from the array
-         for (int sepIdx = Separators.Count - 1; sepIdx >= 0; sepIdx += -1)
+         for (int sepIdx = candidateSeparators.Count - 1; sepIdx >= 0; sepIdx += -1)
          {
-            if (!CSVRows[0].Contains(Sep[sepIdx]))
+            if (!CsvRows[0].Contains(seps[sepIdx]))
             {
-               Sep.RemoveAt(sepIdx);
+               seps.RemoveAt(sepIdx);
             }
          }
 
          //optimize, return separator if just one has been found
-         if (Sep.Count == 1)
+         if (seps.Count == 1)
          {
-            return Sep[0];
+            return seps[0];
          }
 
          //initialize a counter for separators 
          //count the occurrences and compare them with the previous row
-         int[,] sepCounts = new int[Sep.Count, CSVRows.Length];
-         for (int i = 0; i <= CSVRows.Length - 1; i++)
+         int[,] sepCounts = new int[seps.Count, CsvRows.Length];
+         for (int i = 0; i <= CsvRows.Length - 1; i++)
          {
-            char[] CharArray = CSVRows[i].ToCharArray();
-            for (int j = 0; j <= Sep.Count - 1; j++)
+            char[] arr = CsvRows[i].ToCharArray();
+            for (int j = 0; j <= seps.Count - 1; j++)
             {
                bool skip = false;
-               for (int iCharIndex = 0; iCharIndex <= CharArray.Length - 1; iCharIndex++)
+               for (int iCharIndex = 0; iCharIndex <= arr.Length - 1; iCharIndex++)
                {
-                  char current = CharArray[iCharIndex];
+                  char current = arr[iCharIndex];
                   if (current == '"')
                   {
                      skip = !skip;
                   }
-                  else if (current == Sep[j])
+                  else if (current == seps[j])
                   {
                      if (!skip)
                      {
@@ -196,11 +193,11 @@ namespace ExcelReader
             }
             if (i > 0)
             {
-               for (int k = 0; k <= Sep.Count - 1; k++)
+               for (int k = 0; k <= seps.Count - 1; k++)
                {
                   if (sepCounts[k, i - 1] == sepCounts[k, i])
                   {
-                     return Sep[k];
+                     return seps[k];
                   }
                }
             }

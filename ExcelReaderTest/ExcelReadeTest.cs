@@ -11,12 +11,12 @@ namespace ExcelReaderTest
    [TestClass]
    public class ExcelReadeTest
    {
-      private const string Sheet = ExcelReader.ExcelReader.DefaultExcelSheetName;
+      private const string Sheet = ExcelReader.ExcelToDataSetReader.DefaultExcelSheetName;
 
       [TestMethod]
       public void Test_ExcelReader_GetsDataset()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          Assert.IsNotNull(ds);
@@ -25,7 +25,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsDatatable()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          Int32 expectedNoTables = 1;
@@ -36,7 +36,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsDatatable_RowsCount()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -47,7 +47,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsDatatable_ColumnCount()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -58,7 +58,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsColumnNames()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -70,7 +70,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsData()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[0];
@@ -95,7 +95,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_ExcelReader_GetsEmptyCells()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.ExcelReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.ExcelToDataSetReader();
          var file = ExcelReaderTest.Properties.Resources.TestWorkbook1;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[0];

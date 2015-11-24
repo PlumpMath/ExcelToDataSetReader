@@ -8,12 +8,12 @@ namespace ExcelReaderTest
    [TestClass]
    public class CSVReaderTest
    {
-      private const string Sheet = ExcelReader.ExcelReader.DefaultExcelSheetName;
+      private const string Sheet = ExcelReader.ExcelToDataSetReader.DefaultExcelSheetName;
 
       [TestMethod]
       public void Test_CSVReader_GetsDataset()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          Assert.IsNotNull(ds);
@@ -22,7 +22,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsDatatable()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          Int32 expectedNoTables = 1;
@@ -33,7 +33,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsDatatable_RowsCount()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -44,7 +44,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsDatatable_ColumnCount()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -55,7 +55,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsColumnNames()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[Sheet];
@@ -67,7 +67,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsData()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[0];
@@ -92,7 +92,7 @@ namespace ExcelReaderTest
       [TestMethod]
       public void Test_CSVReader_GetsEmptyCells()
       {
-         ExcelReader.IDatasetReader E = new ExcelReader.CSVReader();
+         ExcelReader.IDataSetReader E = new ExcelReader.CsvReader();
          var file = ExcelReaderTest.Properties.Resources.TestCSV;
          DataSet ds = E.GetDataSet(file);
          DataTable dt = ds.Tables[0];

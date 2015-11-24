@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.Office.Interop.Excel;
-using System.IO;
-using System.Diagnostics;
-
-namespace ExcelReader
+﻿namespace ExcelReader
 {
+   using System;
+   using System.Collections.Generic;
+   using System.Linq;
+   using System.Text;
+   using Microsoft.Office.Interop.Excel;
+   using System.IO;
+   using System.Diagnostics;
+
    /// <summary>
    /// Class that contains logic for support reading and writing operations using Excel API.
    /// </summary>
@@ -16,43 +16,49 @@ namespace ExcelReader
    {
       #region "Member constants"
       
-      private const string ExcelCOMLabel = "EXCEL";
+      private const string ExcelComLabel = "EXCEL";
+      /// <summary>
+      /// Maximum number of rows of excel 2007.
+      /// </summary>
       public const int MaxExcel2007Rows = 65536;
+      /// <summary>
+      /// Maximum number of columns of excel 2007.
+      /// </summary>
       public const int MaxExcel2007Columns = 256;
 
       // error codes
-      private const string ErrorCreateCOMObj1 = "0x80080005";
-      private const string ErrorCreateCOMObj2 = "0x80070005";
-      private const string ErrorCreateCOMObj3 = "429";
+      private const string ErrorCreateComObj1 = "0x80080005";
+      private const string ErrorCreateComObj2 = "0x80070005";
+      private const string ErrorCreateComObj3 = "429";
       private const string ActiveXKeyword = "ActiveX";
-      private const string ErrorDCOMAuth1 = "0x800A175D";
-      private const string ErrorDCOMAuth2 = "1004";
+      private const string ErrorDComAuth1 = "0x800A175D";
+      private const string ErrorDComAuth2 = "1004";
       private const string ErrorPrinterNotInstalled = "0x800A03EC";
 
       #endregion
 
-      protected bool _disposed = false;
-      private System.Globalization.CultureInfo _XLCulture = new System.Globalization.CultureInfo("en-US");
-      private System.Globalization.CultureInfo _OrigCulture;
-      private bool _HasApplication;
-      private readonly List<string> _FilePaths = new List<string>();
+      private bool _disposed = false;
+      private System.Globalization.CultureInfo _XlCulture = new System.Globalization.CultureInfo("en-US");
+      private System.Globalization.CultureInfo _originalCulture;
+      private bool _hasApplication;
+      private readonly List<string> _paths = new List<string>();
       
       /// <summary>
       /// Excel Application.
       /// </summary>
       /// <returns>Excel Application</returns>
-      public Application ExcelApplication {get; private set;}
+      protected Application Application { get; private set; }
 
       /// <summary>
       /// Keep files.
       /// </summary>
       /// <value>If <v>True</v> then keep the generated files on the hard drive</value>
-      public bool KeepFiles {get; set;}
+      protected bool KeepFiles { get; set; }
 
       /// <summary>
       /// Classifier of the possible groups of exceptions caused by COM components.
       /// </summary>
-      private enum COMExceptionClassifier
+      private enum ComExceptionClassifier
       {
          CreateCOMObjectExc = 1,
          UserDCOMAuthorizationExc = 2,
@@ -67,19 +73,19 @@ namespace ExcelReader
       /// <returns>Path</returns>
       protected string CurrentTempPath {
          get { 
-            return _FilePaths.Last(); 
+            return _paths.Last(); 
          }
       }
 
       /// <summary>
       /// Create a new object, without opening an Excel Application.
       /// </summary>
-      /// <param name="KeepFiles">If <v>True</v> the files used by Excel Application will be saved</param>
-      public ExcelReaderBase(bool KeepFiles)
+      /// <param name="keepFile">If <v>True</v> the files used by Excel Application will be saved</param>
+      protected ExcelReaderBase(bool keepFile)
       {
-         ExcelApplication = null;
-         this.KeepFiles = KeepFiles;
-         _HasApplication = false;
+         Application = null;
+         this.KeepFiles = keepFile;
+         _hasApplication = false;
       }
 
       #region "Excel Application methods"
@@ -90,18 +96,18 @@ namespace ExcelReader
       /// /// <returns>Excel Application</returns>
       protected Application CreateExcelApplication()
       {
-         InitializeUSCulture();
-         if (_HasApplication)
+         InitializeUsCulture();
+         if (_hasApplication)
             CloseApplication();
          try {
-            ExcelApplication = new Application();
-            ExcelApplication.DisplayAlerts = false;
-            _HasApplication = true;
-            return ExcelApplication;
+            Application = new Application();
+            Application.DisplayAlerts = false;
+            _hasApplication = true;
+            return Application;
          }
          catch (Exception ex) {
-            ReleaseCOMObject(ExcelApplication);
-            throw new ApplicationException("Excel not installed in the machine", ex);
+            ReleaseComObject(Application);
+            throw new InvalidProgramException("Excel not installed in the machine", ex);
          } 
          finally {
             ResetOriginCulture();
@@ -114,20 +120,20 @@ namespace ExcelReader
       /// <remarks>Release all COM components of application and workbooks</remarks>
       private void CloseApplication()
       {
-         InitializeUSCulture();
+         InitializeUsCulture();
          try {
-            if (ExcelApplication.Workbooks != null && ExcelApplication.Workbooks.Count > 0) {
-               foreach (Workbook Workbook in ExcelApplication.Workbooks) {
-                  Workbook.Close(KeepFiles == true ? true : false);
-                  ReleaseCOMObject(Workbook);
+            if (Application.Workbooks != null && Application.Workbooks.Count > 0) {
+               foreach (Workbook workbook in Application.Workbooks) {
+                  workbook.Close(KeepFiles == true ? true : false);
+                  ReleaseComObject(workbook);
                }
             }
-            ExcelApplication.Quit();
+            Application.Quit();
          }
          finally {
-            ExcelApplication.DisplayAlerts = false;
+            Application.DisplayAlerts = false;
             ResetOriginCulture();
-            ReleaseCOMObject(ExcelApplication);
+            ReleaseComObject(Application);
             if (!KeepFiles)
                DeleteTempFile();
          }
@@ -136,73 +142,73 @@ namespace ExcelReader
       /// <summary>
       /// Open an Excel workbook in the application.
       /// </summary>
-      /// <param name="Path">Excel file path</param>
+      /// <param name="path">Excel file path</param>
       /// <returns>Instance of the opened workbook</returns>
-      protected Workbook OpenWorkbook(string Path)
+      protected Workbook OpenWorkbook(string path)
       {
-         Workbook Workbook = null;
+         Workbook workbook = null;
          try {
-            string TempPath = GetTemporaryExcelFile(Path);
-            Workbook = ExcelApplication.Workbooks.Open(TempPath);
-            return Workbook;
+            string tmpPath = GetTemporaryExcelFile(path);
+            workbook = Application.Workbooks.Open(tmpPath);
+            return workbook;
          } 
          catch (Exception ex) {
-            throw new Exception(GetExceptionMessage(ex));
+            throw new InvalidProgramException(GetExceptionMessage(ex));
          }
       }
       
       /// <summary>
       /// Open an Excel workbook in the application.
       /// </summary>
-      /// <param name="BinaryFile">Binary stream</param>
+      /// <param name="file">Binary file</param>
       /// <returns>Instance of the opened workbook</returns>
-      protected Workbook OpenWorkbook(byte[] BinaryFile)
+      protected Workbook OpenWorkbook(byte[] file)
       {
-         Workbook Workbook = null;
+         Workbook workbook = null;
          try {
-            string TempPath = GetTemporaryExcelFile(BinaryFile);
-            Workbook = ExcelApplication.Workbooks.Open(TempPath);
-            return Workbook;
+            string tmpPath = GetTemporaryExcelFile(file);
+            workbook = Application.Workbooks.Open(tmpPath);
+            return workbook;
          } 
          catch (Exception ex) {
-            throw new Exception(GetExceptionMessage(ex));
+            throw new InvalidProgramException(GetExceptionMessage(ex));
          }
       }
 
       /// <summary>
       /// Open an Excel workbook in the application.
       /// </summary>
-      /// <param name="Stream">Excel stream</param>
+      /// <param name="stream">Excel stream</param>
       /// <returns>Instance of the opened workbook</returns>
-      protected Workbook OpenWorkbook(Stream Stream)
+      protected Workbook OpenWorkbook(Stream stream)
       {
-         Workbook Workbook = null;
+         Workbook workbook = null;
          try {
-            string TempPath = GetTemporaryExcelFile(Stream);
-            Workbook = ExcelApplication.Workbooks.Open(TempPath);
-            return Workbook;
+            string tmpPath = GetTemporaryExcelFile(stream);
+            workbook = Application.Workbooks.Open(tmpPath);
+            return workbook;
          } 
          catch (Exception ex) {
-            throw new Exception(GetExceptionMessage(ex));
+            throw new InvalidProgramException(GetExceptionMessage(ex));
          }
       }
 
       /// <summary>
       /// Open an Excel workbook in the application.
       /// </summary>
-      /// <param name="Stream">Excel stream</param>
-      /// <param name="Extension">File extension (e.g. XLS, XLSX)</param>
+      /// <param name="stream">Excel stream</param>
+      /// <param name="extension">File extension (e.g. XLS, XLSX)</param>
       /// <returns>Instance of the opened workbook</returns>
-      protected Workbook OpenWorkbook(Stream Stream, string Extension)
+      protected Workbook OpenWorkbook(Stream stream, string extension)
       {
-         Workbook Workbook = null;
+         Workbook workbook = null;
          try {
-            string TempPath = GetTemporaryExcelFile(Stream, Extension);
-            Workbook = ExcelApplication.Workbooks.Open(TempPath);
-            return Workbook;
+            string tmpPath = GetTemporaryExcelFile(stream, extension);
+            workbook = Application.Workbooks.Open(tmpPath);
+            return workbook;
          } 
          catch (Exception ex) {
-            throw new Exception(GetExceptionMessage(ex));
+            throw new InvalidProgramException(GetExceptionMessage(ex));
          }
       }
 
@@ -214,17 +220,17 @@ namespace ExcelReader
       /// </summary>
       /// <param name="ex">Generic exception</param>
       /// <returns>Exception classifier</returns>
-      private COMExceptionClassifier ClassifyException(Exception ex)
+      private static ComExceptionClassifier ClassifyException(Exception ex)
       {
          if (ex is System.IO.IOException)
-            return COMExceptionClassifier.SystemIOException;
-         if (ex.Message.Contains(ErrorCreateCOMObj1) || ex.Message.Contains(ErrorCreateCOMObj2) || ex.Message.Contains(ActiveXKeyword) || ex.Message.Contains(ErrorCreateCOMObj3))
-            return COMExceptionClassifier.CreateCOMObjectExc;
-         if (ex.Message.Contains(ErrorDCOMAuth1) || ex.Message.Contains(ErrorDCOMAuth2))
-            return COMExceptionClassifier.UserDCOMAuthorizationExc;
+            return ComExceptionClassifier.SystemIOException;
+         if (ex.Message.Contains(ErrorCreateComObj1) || ex.Message.Contains(ErrorCreateComObj2) || ex.Message.Contains(ActiveXKeyword) || ex.Message.Contains(ErrorCreateComObj3))
+            return ComExceptionClassifier.CreateCOMObjectExc;
+         if (ex.Message.Contains(ErrorDComAuth1) || ex.Message.Contains(ErrorDComAuth2))
+            return ComExceptionClassifier.UserDCOMAuthorizationExc;
          if (ex.Message.Contains(ErrorPrinterNotInstalled))
-            return COMExceptionClassifier.PrinterNotInstalledExc;
-         return COMExceptionClassifier.OtherExc;
+            return ComExceptionClassifier.PrinterNotInstalledExc;
+         return ComExceptionClassifier.OtherExc;
       }
 
       /// <summary>
@@ -232,43 +238,43 @@ namespace ExcelReader
       /// </summary>
       /// <param name="ex">Exception for which the message should be retrieved</param>
       /// <returns>Message to throw</returns>
-      private string GetExceptionMessage(Exception ex)
+      private static string GetExceptionMessage(Exception ex)
       {
-         COMExceptionClassifier uCOMExceptionClassifier = ClassifyException(ex);
-         string sMessage = string.Empty;
-         switch (uCOMExceptionClassifier) {
-            case COMExceptionClassifier.SystemIOException:
-               sMessage = "Error IO File";
+         ComExceptionClassifier classifier = ClassifyException(ex);
+         string msg = string.Empty;
+         switch (classifier) {
+            case ComExceptionClassifier.SystemIOException:
+               msg = "Error IO File";
                break;
-            case COMExceptionClassifier.CreateCOMObjectExc:
-               sMessage = "Error while creating COM+ object";
+            case ComExceptionClassifier.CreateCOMObjectExc:
+               msg = "Error while creating COM+ object";
                break;
-            case COMExceptionClassifier.PrinterNotInstalledExc:
-               sMessage = "Printer not found";
+            case ComExceptionClassifier.PrinterNotInstalledExc:
+               msg = "Printer not found";
                break;
-            case COMExceptionClassifier.UserDCOMAuthorizationExc:
-               sMessage = "User DCOM+ authorization error";
+            case ComExceptionClassifier.UserDCOMAuthorizationExc:
+               msg = "User DCOM+ authorization error";
                break;
-            case COMExceptionClassifier.OtherExc:
-               sMessage = "Generic Excel application error";
+            case ComExceptionClassifier.OtherExc:
+               msg = "Generic Excel application error";
                break;
             default:
-               sMessage = "Generic Excel application error";
+               msg = "Generic Excel application error";
                break;
          }
-         return sMessage + Environment.NewLine + ex.Message;
+         return msg + Environment.NewLine + ex.Message;
       }
 
       /// <summary>
       /// Releases resources uses by the COM object.
       /// </summary>
-      /// <param name="objCOM">Instance of the COM object to be released</param>
+      /// <param name="com">Instance of the COM object to be released</param>
       /// <remarks>Code provided by MSDN support</remarks>
-      public static void ReleaseCOMObject(object objCOM)
+      protected static void ReleaseComObject(object com)
       {
          try
          {
-            while ((System.Runtime.InteropServices.Marshal.ReleaseComObject(objCOM) > 0))
+            while ((System.Runtime.InteropServices.Marshal.ReleaseComObject(com) > 0))
             {
             }
          }
@@ -277,17 +283,17 @@ namespace ExcelReader
          }
          finally
          {
-            objCOM = null;
+            com = null;
          }
       }
 
       /// <summary>
       /// Set the US culture to the thread.
       /// </summary>
-      private void InitializeUSCulture()
+      private void InitializeUsCulture()
       {
-         _OrigCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-         System.Threading.Thread.CurrentThread.CurrentCulture = _XLCulture;
+         _originalCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+         System.Threading.Thread.CurrentThread.CurrentCulture = _XlCulture;
       }
 
       /// <summary>
@@ -295,7 +301,7 @@ namespace ExcelReader
       /// </summary>
       private void ResetOriginCulture()
       {
-         System.Threading.Thread.CurrentThread.CurrentCulture = _OrigCulture;
+         System.Threading.Thread.CurrentThread.CurrentCulture = _originalCulture;
       }
 
       /// <summary>
@@ -305,7 +311,7 @@ namespace ExcelReader
       private void DeleteTempFile()
       {
          try {
-            foreach (string path in _FilePaths) {
+            foreach (string path in _paths) {
                if (!string.IsNullOrEmpty(path) && File.Exists(path)) {
                   File.SetAttributes(path, FileAttributes.Archive | FileAttributes.Normal);
                   File.Delete(path);
@@ -313,7 +319,7 @@ namespace ExcelReader
             }
          } 
          finally {
-            _FilePaths.Clear();
+            _paths.Clear();
          }
       }
 
@@ -335,13 +341,13 @@ namespace ExcelReader
       /// <returns>Path</returns>
       private string GetTemporaryExcelFile(Stream excelFileStream, string extension)
       {
-         string StringPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName())) + "." + extension;
+         string path = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName())) + "." + extension;
          MemoryStream ExcelFileMemoryStream = CopyStreamToMemoryStream(excelFileStream);
-         using (FileStream FileStream = new FileStream(StringPath, FileMode.Create, FileAccess.Write)) {
-            ExcelFileMemoryStream.WriteTo(FileStream);
+         using (FileStream fStrem = new FileStream(path, FileMode.Create, FileAccess.Write)) {
+            ExcelFileMemoryStream.WriteTo(fStrem);
          }
-         _FilePaths.Add(StringPath);
-         return StringPath;
+         _paths.Add(path);
+         return path;
       }
 
       /// <summary>
@@ -355,51 +361,51 @@ namespace ExcelReader
          if (File.Exists(excelPath)) {
             File.Copy(excelPath, tmpPath, true);
          }
-         _FilePaths.Add(tmpPath);
+         _paths.Add(tmpPath);
          return tmpPath;
       }
 
       /// <summary>
       /// Create a temporary Path and save the Excel file into a temporary file.
       /// </summary>
-      /// <param name="BinaryFile">Excel binary</param>
+      /// <param name="file">Excel binary</param>
       /// <returns>Path</returns>
-      private string GetTemporaryExcelFile(byte[] BinaryFile)
+      private string GetTemporaryExcelFile(byte[] file)
       {
-         string StringPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()));
-         File.WriteAllBytes(StringPath, BinaryFile);
-         _FilePaths.Add(StringPath);
-         return StringPath;
+         string path = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()));
+         File.WriteAllBytes(path, file);
+         _paths.Add(path);
+         return path;
       }
 
       /// <summary>
       /// Copy a Stream into a new Memory Stream.
       /// </summary>
-      /// <param name="Input">Input stream.</param>
-      public static MemoryStream CopyStreamToMemoryStream(Stream Input)
+      /// <param name="stream">Input stream.</param>
+      protected static MemoryStream CopyStreamToMemoryStream(Stream stream)
       {
-         MemoryStream Output = new MemoryStream();
-         // .NET >= 4.0? Input.CopyTo(Output, 8 * 1024);
-         byte[] cBuffer = new byte[8 * 1024];
+         MemoryStream res = new MemoryStream();
+         //TODO: .NET >= 4.0? Input.CopyTo(Output, 8 * 1024);
+         byte[] buffer = new byte[8 * 1024];
          int Length = 0;
-         Length = Input.Read(cBuffer, 0, cBuffer.Length);
+         Length = stream.Read(buffer, 0, buffer.Length);
          while (Length > 0) {
-            Output.Write(cBuffer, 0, Length);
-            Length = Input.Read(cBuffer, 0, cBuffer.Length);
+            res.Write(buffer, 0, Length);
+            Length = stream.Read(buffer, 0, buffer.Length);
          }
-         return Output;
+         return res;
       }
 
       /// <summary>
       /// Get the sheet count for a given workbook.
       /// </summary>
-      /// <param name="Workbook">Workbook.</param>
+      /// <param name="workbook">Workbook.</param>
       /// <returns>Number of sheets, <c>0</c> if any exception is caught.</returns>
       /// <remarks>If the workbook is not a workbook, is logically correct to return 0, since a workbook must have at least 1 sheet.</remarks>
-      protected int GetSheetCount(Workbook Workbook)
+      protected static int GetSheetCount(Workbook workbook)
       {
          try {
-            return Workbook.Worksheets.Count;
+            return workbook.Worksheets.Count;
          } 
          catch {
             return 0;
@@ -409,19 +415,19 @@ namespace ExcelReader
       /// <summary>
       /// Get the sheet names for a given workbook.
       /// </summary>
-      /// <param name="Workbook">Workbook.</param>
+      /// <param name="workbook">Workbook.</param>
       /// <returns>Array containing the sheet names. If no sheet found, array containing one empty string.</returns>
-      protected string[] GetSheetNames(Workbook Workbook)
+      protected static string[] GetSheetNames(Workbook workbook)
       {
-         int count = GetSheetCount(Workbook);
+         int count = GetSheetCount(workbook);
          if (count != 0) {
-            string[] SheetNames = new string[count];
+            string[] sheetNames = new string[count];
             int i = 0;
-            foreach (Worksheet Sheet in Workbook.Worksheets) {
-               SheetNames[i] = Sheet.Name;
+            foreach (Worksheet Sheet in workbook.Worksheets) {
+               sheetNames[i] = Sheet.Name;
                i++;
             }
-            return SheetNames;
+            return sheetNames;
          }
          return new string[] { string.Empty };
       }
@@ -430,16 +436,16 @@ namespace ExcelReader
       /// Number of Excel COM processes running in the System.
       /// </summary>
       /// <returns>Excel COM processes number.</returns>
-      public int ExcelCOMProcesses()
+      protected static int ExcelComProcesses()
       {
          Process[] procList = Process.GetProcesses();
-         int ExcelCOMCounter = 0;
+         int counter = 0;
          for (int i = 0; i <= procList.GetUpperBound(0); i++)
          {
-            if (procList[i].ProcessName.Contains(ExcelCOMLabel))
-               ExcelCOMCounter += 1;
+            if (procList[i].ProcessName.Contains(ExcelComLabel))
+               counter += 1;
          }
-         return ExcelCOMCounter;
+         return counter;
       }
 
       #endregion
@@ -448,13 +454,13 @@ namespace ExcelReader
       /// <summary>
       /// Dispose the base object resources.
       /// </summary>
-      /// <param name="Disposing">Called by Dispose (<c>True</c>) or Finalize (<c>False</c>) methods</param>
-      protected virtual void Dispose(bool Disposing)
+      /// <param name="disposing">Called by Dispose (<c>True</c>) or Finalize (<c>False</c>) methods</param>
+      protected virtual void Dispose(bool disposing)
       {
          if (!_disposed) {
-            if (Disposing && _HasApplication) {
+            if (disposing && _hasApplication) {
                CloseApplication();
-               _HasApplication = false;
+               _hasApplication = false;
             }
             DeleteTempFile();
             KeepFiles = false;
@@ -466,8 +472,9 @@ namespace ExcelReader
       /// Dispose the object deleting application and files, releasing the COM components and setting parameters to default.
       /// </summary>
       public void Dispose()
-      {
+      {        
          Dispose(true);
+         GC.SuppressFinalize(this);
       }
       
       #endregion
